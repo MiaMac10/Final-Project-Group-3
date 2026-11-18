@@ -1,6 +1,53 @@
 
 const DATAPIPE_EXPERIMENT_ID = "VDmArf6wLtj5";
 
+
+async function uploadToDataPipe() {
+  const headers = [
+    "participant_id", "round", "scene",
+    "question_number", "question",
+    "selected_answer", "correct_answer",
+    "correct", "confidence", "response_time_ms"
+  ];
+
+  const escapeCSV = value =>
+    `"${String(value ?? "").replace(/"/g, '""')}"`;
+
+  const csv = [
+    headers.join(","),
+    ...participant.responses.map(response =>
+      headers.map(header => escapeCSV(response[header])).join(",")
+    )
+  ].join("\n");
+
+  try {
+    const response = await fetch(
+      "https://pipe.jspsych.org/api/data/",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          experimentID: DATAPIPE_EXPERIMENT_ID,
+          filename: `final_memory_${participant.id}.csv`,
+          data: csv
+        })
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("DataPipe upload failed");
+    }
+
+    return true;
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+}
+
+
 const scenes = [
   {
     name: "College Dorm Room",
@@ -293,6 +340,17 @@ function showResults() {
 
   $("downloadBtn").addEventListener("click", downloadResults);
 }
+
+  const saveStatus = document.createElement("p");
+  saveStatus.textContent = "Saving your results...";
+  $("resultsContent").appendChild(saveStatus);
+
+  uploadToDataPipe().then(success => {
+    saveStatus.textContent = success
+      ? "Your results have been submitted."
+      : "Automatic saving failed. Please download your results.";
+  });
+
 
 function downloadResults() {
   const headers = [
