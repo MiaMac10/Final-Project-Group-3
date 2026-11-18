@@ -111,11 +111,21 @@ function startStudy() {
   const image = document.createElement("img");
   image.src = scene.image;
   image.alt = scene.name;
-  image.onerror = () => {
-    $("sceneContainer").textContent =
-      "Scene image missing. Please add " + scene.image;
-    clearInterval(timerInterval);
-  };
+  
+image.onerror = () => {
+  if (
+    scene.image === "images/campus-cafe.png" &&
+    !image.dataset.triedFallback
+  ) {
+    image.dataset.triedFallback = "true";
+    image.src = "images/campus-cafe.png.png";
+    return;
+  }
+
+  clearInterval(timerInterval);
+  $("sceneContainer").textContent =
+    "Image could not load. Please refresh the page.";
+};
 
   $("sceneContainer").appendChild(image);
 
