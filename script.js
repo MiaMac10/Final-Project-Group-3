@@ -27,11 +27,31 @@ const scenes = [
       { question: "Where was the tall plant?", options: ["Behind the counter", "By the window", "Beside the menu", "Near the entrance"], correct: 1 }
     ]
   }
+  ,{
+    name: "Campus Library",
+    image: "images/Library.png",
+    questions: [
+      { question: "What color was the backpack on the chair?", options: ["Blue", "Green", "Pink", "Black"], correct: 1 },
+      { question: "What color was the water bottle on the table?", options: ["Red", "Yellow", "Teal", "Purple"], correct: 2 },
+      { question: "What was beside the notebook on the table?", options: ["A pen", "A pair of glasses", "A coffee cup", "A ruler"], correct: 0 },
+      { question: "What was on the shelf to the right?", options: ["A clock", "A globe", "A vase", "A trophy"], correct: 1 },
+      { question: "What color was the phone case on the table?", options: ["Black", "Blue", "Pink", "Green"], correct: 2 },
+      { question: "How many blue armchairs were by the window?", options: ["One", "Two", "Three", "Four"], correct: 1 }
+    ]
+  }
 ];
+
+function shuffleScenes(indices) {
+  for (let i = indices.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [indices[i], indices[j]] = [indices[j], indices[i]];
+  }
+  return indices;
+}
 
 const participant = {
   id: crypto.randomUUID(),
-  order: Math.random() < 0.5 ? [0, 1] : [1, 0],
+  order: shuffleScenes([0, 1, 2]),
   responses: []
 };
 
@@ -91,7 +111,7 @@ function showQuestion() {
   showScreen("questions");
   selectedAnswer = null;
   const question = currentScene().questions[questionIndex];
-  $("progress").textContent = `Round ${round + 1} of 2 · Question ${questionIndex + 1} of 6`;
+  $("progress").textContent = `Round ${round + 1} of ${participant.order.length} · Question ${questionIndex + 1} of ${currentScene().questions.length}`;
   $("questionText").textContent = question.question;
   $("answerOptions").innerHTML = "";
   question.options.forEach((option, index) => {
@@ -128,9 +148,12 @@ function saveAnswer() {
     response_time_ms: Math.round(performance.now() - questionStart)
   });
   questionIndex++;
-  if (questionIndex < 6) showQuestion();
+  if (questionIndex < currentScene().questions.length) showQuestion();
   else if (round === 0) showFeedback();
-  else showResults();
+  else if (round < participant.order.length - 1) {
+    round++;
+    startStudy();
+  } else showResults();
 }
 
 function getRoundResponses(number) {
@@ -171,7 +194,7 @@ function showFeedback() {
     <h3>Review your answers</h3>
     <ol style="text-align:left">${review}</ol>
     <p>In the next round, try to distinguish between details you clearly remember
-    and details you might be guessing.</p>
+    and details you might be guessing. You will study two more scenes.</p>
   `;
 }
 
@@ -208,22 +231,23 @@ async function uploadToDataPipe() {
 function showResults() {
   showScreen("results");
   const before = calculateMetrics(getRoundResponses(1));
-  const after = calculateMetrics(getRoundResponses(2));
+  const after = calculateMetrics(participant.responses.filter(r => r.round > 1));
   const change = (Number(after.brier) - Number(before.brier)).toFixed(3);
   $("resultsContent").innerHTML = `
     <h3>Before Feedback</h3>
     <p>Accuracy: ${before.accuracy}%</p>
     <p>Average confidence: ${before.confidence}%</p>
     <p>Calibration error: ${before.brier}</p>
-    <h3>After Feedback</h3>
+    <h3>After Feedback (Rounds 2 and 3)</h3>
     <p>Accuracy: ${after.accuracy}%</p>
     <p>Average confidence: ${after.confidence}%</p>
     <p>Calibration error: ${after.brier}</p>
+    <p class="small">Round 2: ${calculateMetrics(getRoundResponses(2)).accuracy}% accurate · Round 3: ${calculateMetrics(getRoundResponses(3)).accuracy}% accurate</p>
     <h3>Your Change in Calibration Error</h3>
     <p>${change}</p>
     <p>Lower calibration error means your confidence better matched
     whether your answers were correct.</p>
-    <p>This comparison alone cannot prove feedback caused the change.</p>
+    <p>This comparison alone cannot prove feedback caused the change. Scene difficulty and practice may also matter.</p>
     <button id="downloadBtn">Download My Results</button>
   `;
   $("downloadBtn").addEventListener("click", downloadResults);

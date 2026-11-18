@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13,66 +12,36 @@
       <div class="logo">🧠 The Memory Lab</div>
       <div class="tagline">A Cognitive Psychology Experience</div>
     </header>
-
     <section id="welcome" class="screen">
       <div class="card">
         <div class="brain-icon">🧠</div>
         <h1>Can You Trust Your Brain?</h1>
-        <p>
-          How accurate is your memory?
-          And how confident are you when you're wrong?
-        </p>
-        <p>
-          Test your memory in two college-life challenges
-          and discover how well your confidence
-          matches your actual performance.
-        </p>
+        <p>How accurate is your memory? And how confident are you when you're wrong?</p>
+        <p>Test your memory in three college-life challenges and discover how well your confidence matches your actual performance.</p>
         <button id="startBtn">Start the Challenge →</button>
-        <p class="small">Approximately 10 minutes</p>
+        <p class="small">Approximately 10 minutes · 3 scenes · 18 questions</p>
       </div>
     </section>
-
-    <section id="study" class="screen hidden">
-      <div class="card">
-        <h2>Study the Scene</h2>
-        <p>Look carefully. You'll have 20 seconds to remember the details.</p>
-        <div id="sceneContainer"></div>
-        <h3 id="timer">20</h3>
-      </div>
-    </section>
-
-    <section id="questions" class="screen hidden">
-      <div class="card">
-        <p id="progress"></p>
-        <h2 id="questionText"></h2>
-        <div id="answerOptions"></div>
-        <h3>How confident are you?</h3>
-        <input type="range" id="confidence" min="25" max="100" step="5" value="75">
-        <p><span id="confidenceValue">75</span>% confident</p>
-        <button id="nextBtn">Next Question →</button>
-      </div>
-    </section>
-
-    <section id="feedback" class="screen hidden">
-      <div class="card">
-        <h2>Your Brain Explained</h2>
-        <div id="feedbackContent"></div>
-        <button id="roundTwoBtn">Try Round 2 →</button>
-      </div>
-    </section>
-
-    <section id="results" class="screen hidden">
-      <div class="card">
-        <h2>Your Memory Results</h2>
-        <div id="resultsContent"></div>
-        <p>
-          Memory confidence and memory accuracy
-          aren't always the same thing!
-        </p>
-      </div>
-    </section>
+    <section id="study" class="screen hidden"><div class="card">
+      <h2>Study the Scene</h2><p>Look carefully. You'll have 20 seconds to remember the details.</p>
+      <div id="sceneContainer"></div><h3 id="timer">20</h3>
+    </div></section>
+    <section id="questions" class="screen hidden"><div class="card">
+      <p id="progress"></p><h2 id="questionText"></h2><div id="answerOptions"></div>
+      <h3>How confident are you?</h3>
+      <input type="range" id="confidence" min="25" max="100" step="5" value="75">
+      <p><span id="confidenceValue">75</span>% confident</p>
+      <button id="nextBtn">Next Question →</button>
+    </div></section>
+    <section id="feedback" class="screen hidden"><div class="card">
+      <h2>Your Brain Explained</h2><div id="feedbackContent"></div>
+      <button id="roundTwoBtn">Continue to Round 2 →</button>
+    </div></section>
+    <section id="results" class="screen hidden"><div class="card">
+      <h2>Your Memory Results</h2><div id="resultsContent"></div>
+      <p>Memory confidence and memory accuracy aren't always the same thing!</p>
+    </div></section>
   </main>
-
   <script src="script.js"></script>
 </body>
 </html>
