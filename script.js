@@ -1,6 +1,14 @@
 // Team 3: memory confidence and accuracy experiment.
 // DataPipe saves anonymous trial-level responses after both rounds.
 const DATAPIPE_EXPERIMENT_ID = "VDmArf6wLtj5";
+const TEAM_ID = "3";
+const CHAIN_ID = "A";
+const QUALTRICS_URL = "https://stlawu.qualtrics.com/jfe/form/SV_dhuzwAkMKUaZetM";
+const incomingParams = new URLSearchParams(window.location.search);
+const sessionId = incomingParams.get("sid");
+const incomingChain = incomingParams.get("chain");
+const validSession = Boolean(sessionId && /^[A-Za-z0-9_-]{4,128}$/.test(sessionId) && incomingChain === CHAIN_ID);
+let sessionStart = new Date().toISOString();
 
 const scenes = [
   {
@@ -50,7 +58,7 @@ function shuffleScenes(indices) {
 }
 
 const participant = {
-  id: crypto.randomUUID(),
+  id: sessionId,
   order: shuffleScenes([0, 1, 2]),
   responses: []
 };
@@ -137,6 +145,9 @@ function saveAnswer() {
   const question = currentScene().questions[questionIndex];
   participant.responses.push({
     participant_id: participant.id,
+    session_id: sessionId,
+    team_id: TEAM_ID,
+    chain_id: CHAIN_ID,
     round: round + 1,
     scene: currentScene().name,
     question_number: questionIndex + 1,
@@ -198,36 +209,55 @@ function showFeedback() {
   `;
 }
 
-function resultsCSV() {
-  const headers = [
-    "participant_id", "round", "scene", "question_number",
-    "question", "selected_answer", "correct_answer",
-    "correct", "confidence", "response_time_ms"
-  ];
-  const escapeCSV = value => `"${String(value).replace(/"/g, '""')}"`;
-  return [
-    headers.join(","),
-    ...participant.responses.map(r => headers.map(h => escapeCSV(r[h])).join(","))
-  ].join("\n");
+function csvEscape(value) {
+  return `"${String(value ?? "").replace(/"/g, '""')}"`;
 }
-
-async function uploadToDataPipe() {
+function toCSV(headers, rows) {
+  return [headers.join(","), ...rows.map(row => headers.map(h => csvEscape(row[h])).join(","))].join("\n");
+}
+function resultsCSV() {
+  const headers = ["session_id", "team_id", "chain_id", "participant_id", "round", "scene", "question_number", "question", "selected_answer", "correct_answer", "correct", "confidence", "response_time_ms"];
+  return toCSV(headers, participant.responses);
+}
+function summaryCSV() {
+  const before = calculateMetrics(getRoundResponses(1));
+  const after = calculateMetrics(participant.responses.filter(r => r.round > 1));
+  const row = {
+    session_id: sessionId, team_id: TEAM_ID, chain_id: CHAIN_ID,
+    session_start: sessionStart, session_end: new Date().toISOString(),
+    trial_count: participant.responses.length,
+    scene_order: participant.order.map(i => scenes[i].name).join(" | "),
+    before_accuracy: before.accuracy, before_confidence: before.confidence, before_brier: before.brier,
+    after_accuracy: after.accuracy, after_confidence: after.confidence, after_brier: after.brier,
+    brier_change: (Number(after.brier) - Number(before.brier)).toFixed(3)
+  };
+  return toCSV(Object.keys(row), [row]);
+}
+async function sendCsvToDataPipe(filename, csvText) {
   const response = await fetch("https://pipe.jspsych.org/api/data/", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      experimentID: DATAPIPE_EXPERIMENT_ID,
-      filename: `final_memory_${participant.id}.csv`,
-      data: resultsCSV()
-    })
+    body: JSON.stringify({ experimentID: DATAPIPE_EXPERIMENT_ID, filename, data: csvText })
   });
-  if (!response.ok) {
-    const errorBody = await response.text();
-    throw new Error(`DataPipe ${response.status}: ${errorBody}`);
-  }
-  return response.status === 202 ? "queued" : "stored";
+  const body = await response.json().catch(() => ({}));
+  if (response.status === 201 || response.status === 202) return;
+  if (response.status === 400 && body.error === "FILE_EXISTS") return;
+  throw new Error(body.error || `DataPipe HTTP ${response.status}`);
 }
-
+async function uploadToDataPipe() {
+  // Retry both: FILE_EXISTS is accepted for a file already stored.
+  await Promise.all([
+    sendCsvToDataPipe(`summary_${sessionId}.csv`, summaryCSV()),
+    sendCsvToDataPipe(`trials_${sessionId}.csv`, resultsCSV())
+  ]);
+}
+function goToQualtrics() {
+  const url = new URL(QUALTRICS_URL);
+  url.searchParams.set("sid", sessionId);
+  url.searchParams.set("chain", CHAIN_ID);
+  url.searchParams.set("source_team", TEAM_ID);
+  window.location.assign(url.toString());
+}
 function showResults() {
   showScreen("results");
   const before = calculateMetrics(getRoundResponses(1));
@@ -254,16 +284,39 @@ function showResults() {
 
   const saveStatus = document.createElement("p");
   saveStatus.setAttribute("role", "status");
-  saveStatus.textContent = "Saving your results...";
+  saveStatus.textContent = "Saving your results to DataPipe...";
   $("resultsContent").appendChild(saveStatus);
-  uploadToDataPipe().then(status => {
-    saveStatus.textContent = status === "queued"
-      ? "Your results were received and queued for saving."
-      : "Your results have been submitted.";
-  }).catch(error => {
-    console.error("DataPipe upload failed:", error);
-    saveStatus.textContent = "Automatic saving failed. Please download your results.";
-  });
+
+  const continueBtn = document.createElement("button");
+  continueBtn.textContent = "Continue to Research Credit Survey →";
+  continueBtn.disabled = true;
+  continueBtn.hidden = true;
+  $("resultsContent").appendChild(continueBtn);
+  continueBtn.addEventListener("click", goToQualtrics);
+
+  const retryBtn = document.createElement("button");
+  retryBtn.textContent = "Retry Saving Results";
+  retryBtn.hidden = true;
+  $("resultsContent").appendChild(retryBtn);
+
+  async function saveAndEnableContinue() {
+    saveStatus.textContent = "Saving your results to DataPipe...";
+    retryBtn.hidden = true;
+    continueBtn.hidden = true;
+    continueBtn.disabled = true;
+    try {
+      await uploadToDataPipe();
+      saveStatus.textContent = "Your results were accepted by DataPipe. Review them, then continue to the survey for research credit.";
+      continueBtn.hidden = false;
+      continueBtn.disabled = false;
+    } catch (error) {
+      console.error("DataPipe upload failed:", error);
+      saveStatus.textContent = "Saving failed. Please retry before continuing. You may also download a local copy below.";
+      retryBtn.hidden = false;
+    }
+  }
+  retryBtn.addEventListener("click", saveAndEnableContinue);
+  saveAndEnableContinue();
 }
 
 function downloadResults() {
@@ -285,3 +338,12 @@ $("roundTwoBtn").addEventListener("click", () => {
 $("confidence").addEventListener("input", event => {
   $("confidenceValue").textContent = event.target.value;
 });
+
+// Team 3 is the last project in Chain A. Never create a replacement sid.
+if (!validSession) {
+  $("startBtn").disabled = true;
+  const notice = document.createElement("p");
+  notice.setAttribute("role", "alert");
+  notice.textContent = "This activity must be opened after completing Team 2's memory game. Please begin through the preceding activity so your research-credit session is preserved.";
+  $("startBtn").insertAdjacentElement("beforebegin", notice);
+}
