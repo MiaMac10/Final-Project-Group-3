@@ -339,7 +339,7 @@ function showResults() {
   `;
 
   $("downloadBtn").addEventListener("click", downloadResults);
-}
+
 
   const saveStatus = document.createElement("p");
   saveStatus.textContent = "Saving your results...";
@@ -350,7 +350,7 @@ function showResults() {
       ? "Your results have been submitted."
       : "Automatic saving failed. Please download your results.";
   });
-
+}
 
 function downloadResults() {
   const headers = [
