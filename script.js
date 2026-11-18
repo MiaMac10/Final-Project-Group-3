@@ -339,6 +339,48 @@ $("confidence").addEventListener("input", event => {
   $("confidenceValue").textContent = event.target.value;
 });
 
+// A manual session-ID field is available ONLY on the explicit testing URL (?test=1).
+// Real participants must arrive from Team 2 with sid and chain=A in their URL.
+function showTestSessionEntry() {
+  const panel = document.createElement("form");
+  panel.style.cssText = "margin:18px auto;padding:18px;max-width:460px;border:1px solid #a6c8e6;border-radius:12px;background:#eef7ff;text-align:left";
+  const title = document.createElement("h3");
+  title.textContent = "Test Session ID";
+  const description = document.createElement("p");
+  description.textContent = "For testing only. Enter a new anonymous test ID (at least 4 letters/numbers). Real participants must begin with Team 1 and continue through Team 2.";
+  const label = document.createElement("label");
+  label.textContent = "Session ID";
+  label.htmlFor = "testSessionId";
+  const field = document.createElement("input");
+  field.id = "testSessionId";
+  field.type = "text";
+  field.placeholder = "e.g. TEST9015";
+  field.required = true;
+  field.pattern = "[A-Za-z0-9_-]{4,128}";
+  field.maxLength = 128;
+  field.style.cssText = "display:block;width:100%;box-sizing:border-box;margin:8px 0 12px;padding:10px;border:1px solid #86acd0;border-radius:6px";
+  const submit = document.createElement("button");
+  submit.type = "submit";
+  submit.textContent = "Start Test Session";
+  const error = document.createElement("p");
+  error.setAttribute("role", "alert");
+  panel.append(title, description, label, field, submit, error);
+  panel.addEventListener("submit", event => {
+    event.preventDefault();
+    const id = field.value.trim();
+    if (!/^[A-Za-z0-9_-]{4,128}$/.test(id)) {
+      error.textContent = "Use 4–128 letters, numbers, underscores, or hyphens.";
+      return;
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.delete("test");
+    url.searchParams.set("sid", id);
+    url.searchParams.set("chain", CHAIN_ID);
+    window.location.assign(url.toString());
+  });
+  $("startBtn").insertAdjacentElement("beforebegin", panel);
+}
+
 // Team 3 is the last project in Chain A. Never create a replacement sid.
 if (!validSession) {
   $("startBtn").disabled = true;
@@ -346,4 +388,5 @@ if (!validSession) {
   notice.setAttribute("role", "alert");
   notice.textContent = "This activity must be opened after completing Team 2's memory game. Please begin through the preceding activity so your research-credit session is preserved.";
   $("startBtn").insertAdjacentElement("beforebegin", notice);
+  if (incomingParams.get("test") === "1") showTestSessionEntry();
 }
