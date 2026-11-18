@@ -1,5 +1,5 @@
 // Team 3: memory confidence and accuracy experiment.
-// DataPipe saves anonymous trial-level responses after both rounds.
+// DataPipe saves anonymous participant summaries and trial-level responses after all three rounds.
 const DATAPIPE_EXPERIMENT_ID = "VDmArf6wLtj5";
 const TEAM_ID = "3";
 const CHAIN_ID = "A";
@@ -278,9 +278,11 @@ function showResults() {
     <p>Lower calibration error means your confidence better matched
     whether your answers were correct.</p>
     <p>This comparison alone cannot prove feedback caused the change. Scene difficulty and practice may also matter.</p>
-    <button id="downloadBtn">Download My Results</button>
+    <button id="downloadBtn">Download Question Results (CSV)</button>
+    <button id="downloadSummaryBtn">Download Summary (CSV)</button>
   `;
   $("downloadBtn").addEventListener("click", downloadResults);
+  $("downloadSummaryBtn").addEventListener("click", downloadSummary);
 
   const saveStatus = document.createElement("p");
   saveStatus.setAttribute("role", "status");
@@ -319,12 +321,22 @@ function showResults() {
   saveAndEnableContinue();
 }
 
+function downloadSummary() {
+  const blob = new Blob([summaryCSV()], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `summary_${sessionId}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 function downloadResults() {
   const blob = new Blob([resultsCSV()], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `memory_results_${participant.id}.csv`;
+  link.download = `trials_${sessionId}.csv`;
   link.click();
   URL.revokeObjectURL(url);
 }

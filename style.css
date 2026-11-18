@@ -72,3 +72,6 @@ input[type="range"] { width: 85%; accent-color: #548fc3; }
   .card { padding: 28px 18px; }
   h1 { font-size: 30px; }
 }
+
+/* Keep the Qualtrics and retry buttons invisible until their conditions are met. */
+[hidden] { display: none !important; }
