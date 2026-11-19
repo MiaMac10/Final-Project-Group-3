@@ -258,6 +258,55 @@ function goToQualtrics() {
   url.searchParams.set("source_team", TEAM_ID);
   window.location.assign(url.toString());
 }
+
+function educationalInterpretation(before, after) {
+  const beforeBrier = Number(before.brier);
+  const afterBrier = Number(after.brier);
+  const improvement = beforeBrier - afterBrier;
+  const gap = after.confidence - after.accuracy;
+
+  let calibration;
+  if (improvement > 0.015) {
+    calibration = `Your calibration error decreased by ${improvement.toFixed(3)}. Your confidence matched your answers more closely in the later rounds. Feedback may have helped you monitor when you knew an answer versus when you were guessing.`;
+  } else if (improvement < -0.015) {
+    calibration = `Your calibration error increased by ${Math.abs(improvement).toFixed(3)}. Your confidence matched your answers less closely in the later rounds. This does not mean you failed to learn: the scenes differed, and attention, guessing, or practice may have affected your scores.`;
+  } else {
+    calibration = `Your calibration error changed very little (${Math.abs(improvement).toFixed(3)}). Your confidence-to-accuracy match was fairly similar across rounds. Feedback does not always produce an immediate change, especially with only a few questions.`;
+  }
+
+  let confidence;
+  if (gap >= 10) {
+    confidence = `In the later rounds, your average confidence (${after.confidence}%) was ${gap} percentage points higher than your accuracy (${after.accuracy}%). This suggests overconfidence: you felt more certain than your performance supported.`;
+  } else if (gap <= -10) {
+    confidence = `In the later rounds, your average confidence (${after.confidence}%) was ${Math.abs(gap)} percentage points lower than your accuracy (${after.accuracy}%). This suggests underconfidence: you remembered more correctly than you expected.`;
+  } else {
+    confidence = `In the later rounds, your average confidence (${after.confidence}%) was close to your accuracy (${after.accuracy}%). This suggests relatively good overall confidence calibration, although individual answers may still have been over- or underconfident.`;
+  }
+
+  let performance;
+  if (after.accuracy > before.accuracy) {
+    performance = `Your accuracy increased from ${before.accuracy}% to ${after.accuracy}%. You may have used the first-round feedback to pay closer attention to details, but later scenes or practice could also explain the change.`;
+  } else if (after.accuracy < before.accuracy) {
+    performance = `Your accuracy decreased from ${before.accuracy}% to ${after.accuracy}%. The later scenes may have been harder for you, or some details may not have been encoded as strongly during the 20-second study period.`;
+  } else {
+    performance = `Your accuracy stayed at ${after.accuracy}%. Even without an accuracy change, your confidence judgments and calibration may have changed.`;
+  }
+
+  return `
+    <section aria-label="Understanding your memory results" style="margin-top:24px;text-align:left;line-height:1.6">
+      <h3>What Cognitive Psychology Predicts</h3>
+      <p><strong>Memory is reconstructive:</strong> remembering a scene is not like replaying a photograph. Attention and encoding affect which details you retain, so some answers may be incorrect even when they feel familiar.</p>
+      <p><strong>Metacognition</strong> is judging your own knowledge. <strong>Confidence calibration</strong> measures how well certainty matches correctness. A lower Brier score (closer to 0) means better calibration. We might expect feedback to help people notice overconfidence or underconfidence and improve later judgments, but improvement is not guaranteed.</p>
+      <h3>What Your Scores Suggest</h3>
+      <p>${calibration}</p>
+      <p>${confidence}</p>
+      <p>${performance}</p>
+      <h3>Why Your Results May Differ from Expectations</h3>
+      <p>Your attention during the 20-second viewing period, which objects stood out, how difficult each scene was, guessing, and fatigue or practice can all affect accuracy and confidence. Because the three rounds use different scenes and there is no no-feedback comparison group, your scores alone cannot show that feedback caused any change.</p>
+      <p><strong>Takeaway:</strong> Feeling certain is not the same as being correct. Checking both your accuracy and your confidence can help you recognize when your memory judgments are well calibrated.</p>
+    </section>`;
+}
+
 function showResults() {
   showScreen("results");
   const before = calculateMetrics(getRoundResponses(1));
@@ -278,6 +327,7 @@ function showResults() {
     <p>Lower calibration error means your confidence better matched
     whether your answers were correct.</p>
     <p>This comparison alone cannot prove feedback caused the change. Scene difficulty and practice may also matter.</p>
+    ${educationalInterpretation(before, after)}
     <button id="downloadBtn">Download Question Results (CSV)</button>
     <button id="downloadSummaryBtn">Download Summary (CSV)</button>
   `;
